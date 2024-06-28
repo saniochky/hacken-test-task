@@ -1,13 +1,16 @@
 import type { FC } from 'react'
 import type { TablePaginationConfig, TableProps } from 'antd';
 import type { ICoinItem } from './interfaces/interfaces.ts';
-import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
+import { useCallback, useEffect, useState } from 'react';
 import { Flex, Image, Select, Table, Typography } from 'antd';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
+import CoinPriceChartTiny from './components/chart/CoinPriceChartTiny.tsx';
 import { E_CURRENCY, E_ORDER } from './enums/enums.ts';
 import { APP_CODE } from './constants/codeMirror.ts';
+
+const { Title } = Typography;
 
 const API_URL = 'https://api.coingecko.com/api/v3/coins/markets';
 const COIN_TABLE_COLUMNS = [
@@ -20,7 +23,7 @@ const COIN_TABLE_COLUMNS = [
                 <Image src={image} width={32} />
                 {text}
             </Flex>
-        )
+        ),
     },
     {
         title: 'Current Price',
@@ -28,20 +31,26 @@ const COIN_TABLE_COLUMNS = [
         key: 'current_price',
     },
     {
+        title: '24H Price Change, %',
+        dataIndex: 'price_change_percentage_24h',
+        key: 'price_change_percentage_24h',
+        render: (value: number) => <CoinPriceChartTiny goingUp={value > 0} />,
+    },
+    {
         title: 'Circulating Supply',
         dataIndex: 'circulating_supply',
         key: 'circulating_supply',
     },
 ];
+
 const getCoinTableColumns = (currency: E_CURRENCY) => COIN_TABLE_COLUMNS.map((el) => el.key === 'current_price' ? {
     ...el,
     render: (text: string) => text + ' ' + currency,
 } : el)
 
-const { Title } = Typography;
-
 const App: FC = () => {
     const [data, setData] = useState<ICoinItem[]>([]);
+    console.log(data);
     const [currency, setCurrency] = useState<E_CURRENCY>(E_CURRENCY.USD);
     const [order, setOrder] = useState<E_ORDER>(E_ORDER.MARKET_CAP_DESC);
     const [pagination, setPagination] = useState<TablePaginationConfig>({

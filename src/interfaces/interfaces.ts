@@ -30,3 +30,7 @@ export interface ICoinItem {
     total_supply: number;
     total_volume: number;
 }
+
+export interface ICoinPrice {
+    prices: [number, number][]
+}
