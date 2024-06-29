@@ -1,14 +1,20 @@
 export const APP_CODE =
     `import type { FC } from 'react'
-import type { TablePaginationConfig, TableProps } from 'antd';
+import type { TableColumnsType, TablePaginationConfig, TableProps } from 'antd';
 import type { ICoinItem } from './interfaces/interfaces.ts';
-import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { Flex, Image, Select, Table, Typography } from 'antd';
+import { useCallback, useEffect, useState, useMemo } from 'react';
+import { Button, Flex, Image, Modal, Select, Table, Typography } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
+import CoinInfo from './components/modal/CoinInfo.tsx';
+import CoinPriceChartTiny from './components/chart/CoinPriceChartTiny.tsx';
 import { E_CURRENCY, E_ORDER } from './enums/enums.ts';
+import { APP_CODE } from './constants/codeMirror.ts';
+
+const { Title } = Typography;
 
 const API_URL = 'https://api.coingecko.com/api/v3/coins/markets';
-const COIN_TABLE_COLUMNS = [
+const BASIC_COIN_TABLE_COLUMNS: TableColumnsType = [
     {
         title: 'Name',
         dataIndex: 'name',
@@ -18,7 +24,7 @@ const COIN_TABLE_COLUMNS = [
                 <Image src={image} width={32} />
                 {text}
             </Flex>
-        )
+        ),
     },
     {
         title: 'Current Price',
@@ -26,17 +32,23 @@ const COIN_TABLE_COLUMNS = [
         key: 'current_price',
     },
     {
+        title: '24H Price Change, %',
+        dataIndex: 'price_change_percentage_24h',
+        key: 'price_change_percentage_24h',
+        render: (value: number) => <CoinPriceChartTiny goingUp={value > 0} />,
+    },
+    {
         title: 'Circulating Supply',
         dataIndex: 'circulating_supply',
         key: 'circulating_supply',
     },
+    {
+        title: '',
+        dataIndex: 'id',
+        align: 'center',
+        key: 'id',
+    },
 ];
-const getCoinTableColumns = (currency: E_CURRENCY) => COIN_TABLE_COLUMNS.map((el) => el.key === 'current_price' ? {
-    ...el,
-    render: (text: string) => text + ' ' + currency,
-} : el)
-
-const { Title } = Typography;
 
 const App: FC = () => {
     const [data, setData] = useState<ICoinItem[]>([]);
@@ -47,10 +59,33 @@ const App: FC = () => {
         pageSize: 10,
         total: 10000,
     });
+    const [chosenCoin, setChosenCoin] = useState<ICoinItem | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
 
+    const columns = useMemo(() => {
+        return BASIC_COIN_TABLE_COLUMNS.map((el) => {
+            if (el.key === 'current_price') {
+                return {
+                    ...el,
+                    render: (text: string) => text + ' ' + currency,
+                };
+            } else if (el.key === 'id') {
+                return {
+                    ...el,
+                    render: (_, coinData: ICoinItem) => (
+                      <Button
+                        shape='circle'
+                        icon={<SearchOutlined />}
+                        onClick={() => setChosenCoin(coinData)}
+                      />
+                    ),
+                };
+            } else return el;
+        });
+    }, [currency]);
+
     const getData = useCallback(async (page: number, rows: number, currency: E_CURRENCY, order: E_ORDER) => {
-        const cryptoData = await axios.get(\`\${API_URL}/?vs_currency=\${currency}&order=\${order}&per_page=\${rows}&page=\${page}&sparkline=false\`);
+        const cryptoData = await axios.get(\`\${API_URL}/?vs_currency=\${currency}&order=\${order}&per_page=\${rows}&page=\${page}\`);
         return cryptoData.data;
     }, []);
 
@@ -100,12 +135,20 @@ const App: FC = () => {
             </Flex>
             <Table
                 dataSource={data}
-                columns={getCoinTableColumns(currency)}
-                rowKey="id"
+                columns={columns}
+                rowKey='id'
                 pagination={pagination}
                 onChange={handleTableChange}
                 loading={loading}
             />
+            <Modal
+              title={<Title level={4}>{chosenCoin?.name} Detailed Info</Title>}
+              open={!!chosenCoin}
+              footer={null}
+              onCancel={() => setChosenCoin(null)}
+            >
+                {chosenCoin && <CoinInfo coinData={chosenCoin} currency={currency} />}
+            </Modal>
         </Flex>
     );
 };

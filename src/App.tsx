@@ -1,11 +1,13 @@
 import type { FC } from 'react'
-import type { TablePaginationConfig, TableProps } from 'antd';
+import type { TableColumnsType, TablePaginationConfig, TableProps } from 'antd';
 import type { ICoinItem } from './interfaces/interfaces.ts';
 import axios from 'axios';
-import { useCallback, useEffect, useState } from 'react';
-import { Flex, Image, Select, Table, Typography } from 'antd';
+import { useCallback, useEffect, useState, useMemo } from 'react';
+import { Button, Flex, Image, Modal, Select, Table, Typography } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
+import CoinInfo from './components/modal/CoinInfo.tsx';
 import CoinPriceChartTiny from './components/chart/CoinPriceChartTiny.tsx';
 import { E_CURRENCY, E_ORDER } from './enums/enums.ts';
 import { APP_CODE } from './constants/codeMirror.ts';
@@ -13,7 +15,7 @@ import { APP_CODE } from './constants/codeMirror.ts';
 const { Title } = Typography;
 
 const API_URL = 'https://api.coingecko.com/api/v3/coins/markets';
-const COIN_TABLE_COLUMNS = [
+const BASIC_COIN_TABLE_COLUMNS: TableColumnsType = [
     {
         title: 'Name',
         dataIndex: 'name',
@@ -41,16 +43,16 @@ const COIN_TABLE_COLUMNS = [
         dataIndex: 'circulating_supply',
         key: 'circulating_supply',
     },
+    {
+        title: '',
+        dataIndex: 'id',
+        align: 'center',
+        key: 'id',
+    },
 ];
-
-const getCoinTableColumns = (currency: E_CURRENCY) => COIN_TABLE_COLUMNS.map((el) => el.key === 'current_price' ? {
-    ...el,
-    render: (text: string) => text + ' ' + currency,
-} : el)
 
 const App: FC = () => {
     const [data, setData] = useState<ICoinItem[]>([]);
-    console.log(data);
     const [currency, setCurrency] = useState<E_CURRENCY>(E_CURRENCY.USD);
     const [order, setOrder] = useState<E_ORDER>(E_ORDER.MARKET_CAP_DESC);
     const [pagination, setPagination] = useState<TablePaginationConfig>({
@@ -58,10 +60,33 @@ const App: FC = () => {
         pageSize: 10,
         total: 10000,
     });
+    const [chosenCoin, setChosenCoin] = useState<ICoinItem | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
 
+    const columns = useMemo(() => {
+        return BASIC_COIN_TABLE_COLUMNS.map((el) => {
+            if (el.key === 'current_price') {
+                return {
+                    ...el,
+                    render: (text: string) => text + ' ' + currency,
+                };
+            } else if (el.key === 'id') {
+                return {
+                    ...el,
+                    render: (_, coinData: ICoinItem) => (
+                      <Button
+                        shape='circle'
+                        icon={<SearchOutlined />}
+                        onClick={() => setChosenCoin(coinData)}
+                      />
+                    ),
+                };
+            } else return el;
+        });
+    }, [currency]);
+
     const getData = useCallback(async (page: number, rows: number, currency: E_CURRENCY, order: E_ORDER) => {
-        const cryptoData = await axios.get(`${API_URL}/?vs_currency=${currency}&order=${order}&per_page=${rows}&page=${page}&sparkline=false`);
+        const cryptoData = await axios.get(`${API_URL}/?vs_currency=${currency}&order=${order}&per_page=${rows}&page=${page}`);
         return cryptoData.data;
     }, []);
 
@@ -111,12 +136,20 @@ const App: FC = () => {
             </Flex>
             <Table
                 dataSource={data}
-                columns={getCoinTableColumns(currency)}
-                rowKey="id"
+                columns={columns}
+                rowKey='id'
                 pagination={pagination}
                 onChange={handleTableChange}
                 loading={loading}
             />
+            <Modal
+              title={<Title level={4}>{chosenCoin?.name} Detailed Info</Title>}
+              open={!!chosenCoin}
+              footer={null}
+              onCancel={() => setChosenCoin(null)}
+            >
+                {chosenCoin && <CoinInfo coinData={chosenCoin} currency={currency} />}
+            </Modal>
             <Title level={2}>App Code</Title>
             <CodeMirror value={APP_CODE} extensions={[javascript({ jsx: true })]} />
         </Flex>

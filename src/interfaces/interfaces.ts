@@ -32,5 +32,7 @@ export interface ICoinItem {
 }
 
 export interface ICoinPrice {
-    prices: [number, number][]
+    prices: [number, number][];
+    market_caps: [number, number][];
+    volumes: [number, number][];
 }
