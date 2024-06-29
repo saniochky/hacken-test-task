@@ -73,7 +73,7 @@ const App: FC = () => {
             } else if (el.key === 'id') {
                 return {
                     ...el,
-                    render: (_, coinData: ICoinItem) => (
+                    render: (_: string, coinData: ICoinItem) => (
                       <Button
                         shape='circle'
                         icon={<SearchOutlined />}

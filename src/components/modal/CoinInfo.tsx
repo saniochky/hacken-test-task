@@ -20,7 +20,7 @@ interface ICoinInfoProps {
 }
 
 const CoinInfo: FC<ICoinInfoProps> = ({ coinData, currency }) => {
-    const [priceData, setPriceData] = useState<ICoinPrice>(null);
+    const [priceData, setPriceData] = useState<ICoinPrice | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
 
     const getData = useCallback(async (id: string, currency: E_CURRENCY): Promise<ICoinPrice> => {
